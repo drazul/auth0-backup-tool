@@ -1,4 +1,4 @@
-package auth0
+package pkg
 
 import (
 	"compress/gzip"
