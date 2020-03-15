@@ -1,5 +1,7 @@
 package auth0
 
+import "time"
+
 var DefaultUserAttributes = []string{
 	"user_id",
 	"given_name",
@@ -29,6 +31,8 @@ type client struct {
 	Domain         string
 	UserAttributes []string
 	Connection     string
+	AuthToken      string
+	ValidUntil     time.Time
 }
 
 func New(clientId string, clientSecret string, domain string, connection string, userAttributes []string) Client {

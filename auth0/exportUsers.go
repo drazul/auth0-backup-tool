@@ -1,11 +1,11 @@
 package auth0
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type exportUsersRequest struct {
@@ -16,13 +16,13 @@ type exportUsersRequest struct {
 
 func (c client) ExportUsers(filename string) {
 	fmt.Printf("filename: %+v\n", filename)
-	job := c.requestExportUsers()
-	fmt.Printf("job: %+v\n", job)
-	result := c.waitUntilJobFinish(job)
-	fmt.Printf("result: %+v\n", result)
+	var job = Job{}
+	job = c.requestExportUsers()
+	job = c.waitUntilJobFinish(job)
+	c.downloadFile(job, filename)
 }
 
-func (c client) requestExportUsers() string {
+func (c client) requestExportUsers() Job {
 	b := exportUsersRequest{
 		ConnectionId: c.Connection,
 		Format:       "json",
@@ -33,37 +33,20 @@ func (c client) requestExportUsers() string {
 
 	jsonData, _ := json.Marshal(b)
 
-	client := &http.Client{}
-	req, err := http.NewRequest(
-		"Post",
+	req, _ := http.NewRequest("POST",
 		"https://"+c.Domain+"/api/v2/jobs/users-exports",
-		bytes.NewBuffer(jsonData))
-	if err != nil {
-		panic(err)
-	}
+		strings.NewReader(string(jsonData)))
+
 	req.Header.Add("authorization", "Bearer "+c.login())
 	req.Header.Add("content-type", "application/json")
 
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
+	res, _ := http.DefaultClient.Do(req)
 
-	responseBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
 
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	fmt.Println("response Body:", string(responseBody))
+	job := Job{}
+	_ = json.Unmarshal(body, &job)
 
-	fmt.Printf("result: %+v\n", string(jsonData))
-
-	return "job 123fdasf"
-}
-
-func (c client) waitUntilJobFinish(job string) string {
-	return "result 12314"
+	return job
 }

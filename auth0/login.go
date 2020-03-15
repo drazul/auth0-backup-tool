@@ -3,8 +3,10 @@ package auth0
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type loginRequest struct {
@@ -21,7 +23,14 @@ type loginResponse struct {
 	TokenType   string `json:"token_type"`
 }
 
-func (c client) login() string {
+func (c *client) login() string {
+	fmt.Printf("Time valid until %v time now %v\n", c.ValidUntil, time.Now())
+	if !c.ValidUntil.IsZero() && c.ValidUntil.After(time.Now()) {
+		fmt.Println("Reusing auth token")
+		return c.AuthToken
+	}
+	fmt.Println("Requesting new auth token")
+
 	b := loginRequest{
 		ClientId:     c.ClientId,
 		ClientSecret: c.ClientSecret,
@@ -46,6 +55,8 @@ func (c client) login() string {
 	if err != nil {
 		panic(err)
 	}
+	c.AuthToken = authResponse.AccessToken
+	c.ValidUntil = time.Now().Add(time.Second * time.Duration(authResponse.ExpiresIn))
 
-	return authResponse.AccessToken
+	return c.AuthToken
 }
