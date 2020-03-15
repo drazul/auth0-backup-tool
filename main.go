@@ -1,7 +1,7 @@
 package main
 
 import (
-	"auth0"
+	"auth0-user-management-cli/pkg"
 	"flag"
 	"fmt"
 	"strings"
@@ -37,7 +37,7 @@ func parseFlags() Flags {
 func main() {
 	flags := parseFlags()
 
-	auth0 := auth0.New(flags.ClientId, flags.ClientSecret, flags.Domain, flags.Connection, strings.Split(flags.UserAttributes, ","))
+	auth0 := pkg.New(flags.ClientId, flags.ClientSecret, flags.Domain, flags.Connection, strings.Split(flags.UserAttributes, ","))
 	auth0.ExportUsers(flags.UsersFile)
 
 	fmt.Printf("Flags: %+v\n", flags)

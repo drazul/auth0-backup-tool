@@ -1,4 +1,4 @@
-package auth0
+package pkg
 
 var DefaultUserAttributes = []string{
 	"user_id",
