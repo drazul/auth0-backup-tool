@@ -10,12 +10,33 @@ import (
 	"time"
 )
 
-func ExportUsers(jobManager *management.JobManager, connection string, usersFile string) {
+var DefaultUserAttributes = []string{
+	"user_id",
+	"given_name",
+	"family_name",
+	"nickname",
+	"name",
+	"email",
+	"email_verified",
+	"created_at",
+	"updated_at",
+	"app_metadata",
+	"user_metadata",
+	"blocked",
+	"last_password_reset",
+	"logins_count",
+	"last_login",
+	"identities",
+}
+
+func ExportUsers(jobManager *management.JobManager, connection string, usersAttributes []string, usersFile string) {
 	format := "json"
 	job := management.Job{
 		ConnectionID: &connection,
 		Format:       &format,
 	}
+
+	AddUserAttributes(&job, usersAttributes)
 
 	err := jobManager.ExportUsers(&job)
 	if err != nil {
@@ -30,6 +51,18 @@ func ExportUsers(jobManager *management.JobManager, connection string, usersFile
 	}
 
 	DownloadFile(*j.Location, usersFile)
+}
+
+func AddUserAttributes(job *management.Job, usersAttributes []string) {
+	attributes := usersAttributes
+	if attributes[0] == "" {
+		attributes = DefaultUserAttributes
+	}
+
+	for _, value := range attributes {
+		field := map[string]interface{}{"name": value}
+		job.Fields = append(job.Fields, field)
+	}
 }
 
 func DownloadFile(url string, usersFile string) {

@@ -4,6 +4,7 @@ import (
 	"auth0-user-management-cli/pkg"
 	"flag"
 	"gopkg.in/auth0.v3/management"
+	"strings"
 )
 
 type Flags struct {
@@ -43,7 +44,7 @@ func main() {
 
 	switch flags.Action {
 	case "export":
-		pkg.ExportUsers(manager.Job, flags.Connection, flags.UsersFile)
+		pkg.ExportUsers(manager.Job, flags.Connection, strings.Split(flags.UserAttributes, ","), flags.UsersFile)
 	case "import":
 		pkg.ImportUsers(manager.Job, flags.Connection, flags.UsersFile, false)
 	}
