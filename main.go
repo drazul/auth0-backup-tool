@@ -15,6 +15,7 @@ type Flags struct {
 	UsersFile      string
 	UserAttributes string
 	Connection     string
+	Action         string
 }
 
 func parseFlags() Flags {
@@ -30,6 +31,8 @@ func parseFlags() Flags {
 	flag.StringVar(&flags.UsersFile, "users-file", "users-export.json", "File path where to store the exported users or where to read the users to import")
 	flag.StringVar(&flags.UserAttributes, "user-attributes", "", "List of user attributes to export. Format: attr1,attr2,attr3")
 
+	flag.StringVar(&flags.Action, "action", "", "Action to perform. Can be import or export")
+
 	flag.Parse()
 	return flags
 }
@@ -38,8 +41,13 @@ func main() {
 	flags := parseFlags()
 
 	auth0 := pkg.New(flags.ClientId, flags.ClientSecret, flags.Domain, flags.Connection, strings.Split(flags.UserAttributes, ","))
-	//auth0.ExportUsers(flags.UsersFile)
-	auth0.ImportUsers(flags.UsersFile, "false")
+
+	switch flags.Action {
+	case "export":
+		auth0.ExportUsers(flags.UsersFile)
+	case "import":
+		auth0.ImportUsers(flags.UsersFile, "false")
+	}
 
 	fmt.Printf("Flags: %+v\n", flags)
 	fmt.Printf("Auth0 Client: %+v\n", auth0)
