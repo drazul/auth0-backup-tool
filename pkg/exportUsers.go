@@ -1,29 +1,32 @@
 package pkg
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 )
 
-type exportUsersRequest struct {
+type ExportUsersRequest struct {
 	ConnectionId string              `json:"connection_id"`
 	Format       string              `json:"format"`
 	Fields       []map[string]string `json:"fields"`
 }
 
-func (c client) ExportUsers(filename string) {
-	fmt.Printf("filename: %+v\n", filename)
+func (c client) ExportUsers(usersFile string) {
+	fmt.Printf("filename: %+v\n", usersFile)
 	var job = Job{}
-	job = c.requestExportUsers()
-	job = c.waitUntilJobFinish(job)
-	c.downloadFile(job, filename)
+	job = c.RequestExportUsers()
+	job = c.WaitUntilJobFinish(job)
+	c.DownloadFile(job, usersFile)
 }
 
-func (c client) requestExportUsers() Job {
-	b := exportUsersRequest{
+func (c client) RequestExportUsers() Job {
+	b := ExportUsersRequest{
 		ConnectionId: c.Connection,
 		Format:       "json",
 	}
@@ -49,4 +52,24 @@ func (c client) requestExportUsers() Job {
 	_ = json.Unmarshal(body, &job)
 
 	return job
+}
+
+func (c client) DownloadFile(j Job, usersFile string) {
+	fmt.Println("Downloading ", j.Location, " to ", usersFile)
+
+	resp, err := http.Get(j.Location)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	zip, _ := gzip.NewReader(resp.Body)
+	zip.Multistream(false)
+
+	f, err := os.Create(usersFile)
+	_, err = io.Copy(f, zip)
+
+	if err != nil {
+		panic(err)
+	}
 }

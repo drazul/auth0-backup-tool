@@ -1,6 +1,9 @@
 package pkg
 
-import "time"
+import (
+	"github.com/google/uuid"
+	"time"
+)
 
 var DefaultUserAttributes = []string{
 	"user_id",
@@ -23,6 +26,7 @@ var DefaultUserAttributes = []string{
 
 type Client interface {
 	ExportUsers(filename string)
+	ImportUsers(usersFile string, updateExistingUsers string)
 }
 
 type client struct {
@@ -33,6 +37,7 @@ type client struct {
 	Connection     string
 	AuthToken      string
 	ValidUntil     time.Time
+	CorrelationId  string
 }
 
 func New(clientId string, clientSecret string, domain string, connection string, userAttributes []string) Client {
@@ -42,6 +47,7 @@ func New(clientId string, clientSecret string, domain string, connection string,
 		Domain:         domain,
 		UserAttributes: userAttributes,
 		Connection:     connection,
+		CorrelationId:  uuid.New().String(),
 	}
 
 	if client.UserAttributes[0] == "" {

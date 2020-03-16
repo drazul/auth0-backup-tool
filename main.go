@@ -38,7 +38,8 @@ func main() {
 	flags := parseFlags()
 
 	auth0 := pkg.New(flags.ClientId, flags.ClientSecret, flags.Domain, flags.Connection, strings.Split(flags.UserAttributes, ","))
-	auth0.ExportUsers(flags.UsersFile)
+	//auth0.ExportUsers(flags.UsersFile)
+	auth0.ImportUsers(flags.UsersFile, "false")
 
 	fmt.Printf("Flags: %+v\n", flags)
 	fmt.Printf("Auth0 Client: %+v\n", auth0)
