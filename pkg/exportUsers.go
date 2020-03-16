@@ -2,62 +2,40 @@ package pkg
 
 import (
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
+	"gopkg.in/auth0.v3/management"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
+	"time"
 )
 
-type ExportUsersRequest struct {
-	ConnectionId string              `json:"connection_id"`
-	Format       string              `json:"format"`
-	Fields       []map[string]string `json:"fields"`
-}
-
-func (c client) ExportUsers(usersFile string) {
-	fmt.Printf("filename: %+v\n", usersFile)
-	var job = Job{}
-	job = c.RequestExportUsers()
-	job = c.WaitUntilJobFinish(job)
-	c.DownloadFile(job, usersFile)
-}
-
-func (c client) RequestExportUsers() Job {
-	b := ExportUsersRequest{
-		ConnectionId: c.Connection,
-		Format:       "json",
-	}
-	for _, value := range c.UserAttributes {
-		b.Fields = append(b.Fields, map[string]string{"name": value})
+func ExportUsers(jobManager *management.JobManager, connection string, usersFile string) {
+	format := "json"
+	job := management.Job{
+		ConnectionID: &connection,
+		Format:       &format,
 	}
 
-	jsonData, _ := json.Marshal(b)
+	err := jobManager.ExportUsers(&job)
+	if err != nil {
+		panic(err)
+	}
 
-	req, _ := http.NewRequest("POST",
-		"https://"+c.Domain+"/api/v2/jobs/users-exports",
-		strings.NewReader(string(jsonData)))
+	j, err := jobManager.Read(*job.ID)
+	for ok := true; ok; ok = *j.Status == "pending" {
+		fmt.Println("Job status " + *j.Status + " waiting 5 seconds.")
+		time.Sleep(5 * time.Second)
+		j, _ = jobManager.Read(*job.ID)
+	}
 
-	req.Header.Add("authorization", "Bearer "+c.login())
-	req.Header.Add("content-type", "application/json")
-
-	res, _ := http.DefaultClient.Do(req)
-
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-
-	job := Job{}
-	_ = json.Unmarshal(body, &job)
-
-	return job
+	DownloadFile(*j.Location, usersFile)
 }
 
-func (c client) DownloadFile(j Job, usersFile string) {
-	fmt.Println("Downloading ", j.Location, " to ", usersFile)
+func DownloadFile(url string, usersFile string) {
+	fmt.Println("Downloading ", url, " to ", usersFile)
 
-	resp, err := http.Get(j.Location)
+	resp, err := http.Get(url)
 	if err != nil {
 		return
 	}

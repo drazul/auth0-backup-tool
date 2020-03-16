@@ -1,66 +1,56 @@
 package pkg
 
 import (
-	"bytes"
+	"bufio"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"mime/multipart"
-	"net/http"
+	"gopkg.in/auth0.v3/management"
 	"os"
 	"time"
 )
 
-func (c client) ImportUsers(usersFile string, updateExistingUsers string) {
-	var job = Job{}
-	job = c.RequestImportUsers(usersFile, updateExistingUsers)
-	job = c.WaitUntilJobFinish(job)
-	fmt.Printf("Import users job: %+v\n", job)
-	fmt.Printf("Import users job summary: %+v\n", job.Summary)
-}
+func ImportUsers(jobManager *management.JobManager, connection string, usersFile string, updateExistingUsers bool) {
 
-func (c client) RequestImportUsers(usersFile string, updateExistingUsers string) Job {
-	file, _ := os.Open(usersFile)
-	fileContents, _ := ioutil.ReadAll(file)
-	fi, _ := file.Stat()
-	file.Close()
-
-	body := new(bytes.Buffer)
-	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile("users", fi.Name())
-
-	part.Write(fileContents)
-
-	_ = writer.WriteField("connection_id", c.Connection)
-	_ = writer.WriteField("external_id", c.CorrelationId)
-	_ = writer.WriteField("upsert", updateExistingUsers)
-	_ = writer.WriteField("send_completion_email", "false")
-
-	_ = writer.Close()
-
-	req, _ := http.NewRequest("POST",
-		"https://"+c.Domain+"/api/v2/jobs/users-imports",
-		body)
-
-	req.Header.Add("authorization", "Bearer "+c.login())
-
-	res, _ := http.DefaultClient.Do(req)
-
-	defer res.Body.Close()
-	resBody, _ := ioutil.ReadAll(res.Body)
-
-	fmt.Println(string(resBody))
-	time.Sleep(1000 * time.Second)
-	//job := Job{}
-	//_ = json.Unmarshal(body, &job)
-
-	return Job{}
-}
-
-func (c client) ReadFile(usersFile string) string {
-	content, err := ioutil.ReadFile(usersFile)
-	if err != nil {
-		log.Fatal(err)
+	format := "json"
+	sendCompletionEmail := false
+	job := management.Job{
+		ConnectionID:        &connection,
+		Format:              &format,
+		Upsert:              &updateExistingUsers,
+		SendCompletionEmail: &sendCompletionEmail,
+		Users:               ReadUsersFile(usersFile),
 	}
-	return string(content)
+
+	err := jobManager.ImportUsers(&job)
+	if err != nil {
+		panic(err)
+	}
+
+	j, err := jobManager.Read(*job.ID)
+	for ok := true; ok; ok = *j.Status == "pending" {
+		fmt.Println("Job status " + *j.Status + " waiting 5 seconds.")
+		time.Sleep(5 * time.Second)
+		j, _ = jobManager.Read(*job.ID)
+	}
+
+	fmt.Printf("Response: %+v\n", j)
+}
+
+func ReadUsersFile(filename string) []map[string]interface{} {
+	f, err := os.Open(filename)
+	defer f.Close()
+
+	if err != nil {
+		panic(err)
+	}
+	var userList []map[string]interface{}
+
+	fileScanner := bufio.NewScanner(f)
+	fileScanner.Split(bufio.ScanLines)
+	for fileScanner.Scan() {
+		var user map[string]interface{}
+		json.Unmarshal(fileScanner.Bytes(), &user)
+		userList = append(userList, user)
+	}
+	return userList
 }

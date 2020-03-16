@@ -3,8 +3,7 @@ package main
 import (
 	"auth0-user-management-cli/pkg"
 	"flag"
-	"fmt"
-	"strings"
+	"gopkg.in/auth0.v3/management"
 )
 
 type Flags struct {
@@ -40,15 +39,13 @@ func parseFlags() Flags {
 func main() {
 	flags := parseFlags()
 
-	auth0 := pkg.New(flags.ClientId, flags.ClientSecret, flags.Domain, flags.Connection, strings.Split(flags.UserAttributes, ","))
+	manager, _ := management.New(flags.Domain, flags.ClientId, flags.ClientSecret)
 
 	switch flags.Action {
 	case "export":
-		auth0.ExportUsers(flags.UsersFile)
+		pkg.ExportUsers(manager.Job, flags.Connection, flags.UsersFile)
 	case "import":
-		auth0.ImportUsers(flags.UsersFile, "false")
+		pkg.ImportUsers(manager.Job, flags.Connection, flags.UsersFile, false)
 	}
 
-	fmt.Printf("Flags: %+v\n", flags)
-	fmt.Printf("Auth0 Client: %+v\n", auth0)
 }
