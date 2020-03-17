@@ -1,4 +1,4 @@
-module auth0-user-management-cli
+module auth0-backup-tool
 
 go 1.14
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"auth0-user-management-cli/pkg"
+	"auth0-backup-tool/pkg"
 	"flag"
 	"fmt"
 	"gopkg.in/auth0.v3/management"
