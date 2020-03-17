@@ -24,7 +24,6 @@ var RequiredFlags = []string{
 	"client-id",
 	"client-secret",
 	"domain",
-	"connection",
 	"action",
 }
 
@@ -34,8 +33,8 @@ func parseFlags() Flags {
 	flag.StringVar(&flags.ClientId, "client-id", "", "Client ID of an application with user management rights")
 	flag.StringVar(&flags.ClientSecret, "client-secret", "", "Client secret of an application with user management rights")
 	flag.StringVar(&flags.Domain, "domain", "", "Auth0 domain")
-	flag.StringVar(&flags.Connection, "connection", "", "Auth0 connection ID")
-	flag.StringVar(&flags.UsersFile, "users-file", "users-export.json", "File path where to store the exported users or where to read the users to import")
+	flag.StringVar(&flags.Connection, "connection", "", "Auth0 connection ID. If it's empty a backup to all connections will be performed")
+	flag.StringVar(&flags.UsersFile, "users-file", "users-export.json", "File path where to store the exported users or where to read the users to import. When export all connections this flag contains the folder name where to store all exported files")
 	flag.StringVar(&flags.UserAttributes, "user-attributes", "", "List of user attributes to export. Format: attr1,attr2,attr3")
 	flag.StringVar(&flags.Action, "action", "", "Action to perform. Can be 'import' or 'export'")
 
@@ -43,6 +42,12 @@ func parseFlags() Flags {
 
 	checkNeededFlags(flags)
 	return flags
+}
+
+func abortWithCommandHelp() {
+	fmt.Fprintf(os.Stderr, "\n\nUsage of %s:\n", os.Args[0])
+	flag.PrintDefaults()
+	os.Exit(2) // the same exit code flag.Parse uses
 }
 
 func checkNeededFlags(flags Flags) {
@@ -57,9 +62,7 @@ func checkNeededFlags(flags Flags) {
 		}
 	}
 	if missingFlags {
-		fmt.Fprintf(os.Stderr, "\n\nUsage of %s:\n", os.Args[0])
-		flag.PrintDefaults()
-		os.Exit(2) // the same exit code flag.Parse uses
+		abortWithCommandHelp()
 	}
 }
 
@@ -70,9 +73,15 @@ func main() {
 
 	switch flags.Action {
 	case "export":
-		pkg.ExportUsers(manager.Job, flags.Connection, strings.Split(flags.UserAttributes, ","), flags.UsersFile)
+		if flags.Connection == "" {
+			pkg.ExportFromAllConnections(manager, flags.UsersFile)
+		} else {
+			pkg.ExportUsers(manager.Job, flags.Connection, strings.Split(flags.UserAttributes, ","), flags.UsersFile)
+		}
 	case "import":
 		pkg.ImportUsers(manager.Job, flags.Connection, flags.UsersFile, false)
+	default:
+		fmt.Fprintf(os.Stderr, "Wrong action '%s'", flags.Action)
+		abortWithCommandHelp()
 	}
-
 }

@@ -14,13 +14,13 @@ Usage of auth0-backup-tool:
   -client-secret string
         Client secret of an application with user management rights
   -connection string
-        Auth0 connection ID
+        Auth0 connection ID. If it's empty a backup to all connections will be performed
   -domain string
         Auth0 domain
   -user-attributes string
         List of user attributes to export. Format: attr1,attr2,attr3
   -users-file string
-        File path where to store the exported users or where to read the users to import (default "users-export.json")
+        File path where to store the exported users or where to read the users to import. When export all connections this flag contains the folder name where to store all exported files (default "users-export.json")
 ```
 
 # User export format with default attributes
