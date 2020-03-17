@@ -2,62 +2,73 @@ package pkg
 
 import (
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
+	"gopkg.in/auth0.v3/management"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
+	"time"
 )
 
-type ExportUsersRequest struct {
-	ConnectionId string              `json:"connection_id"`
-	Format       string              `json:"format"`
-	Fields       []map[string]string `json:"fields"`
+var DefaultUserAttributes = []string{
+	"user_id",
+	"given_name",
+	"family_name",
+	"nickname",
+	"name",
+	"email",
+	"email_verified",
+	"created_at",
+	"updated_at",
+	"app_metadata",
+	"user_metadata",
+	"blocked",
+	"last_password_reset",
+	"logins_count",
+	"last_login",
+	"identities",
 }
 
-func (c client) ExportUsers(usersFile string) {
-	fmt.Printf("filename: %+v\n", usersFile)
-	var job = Job{}
-	job = c.RequestExportUsers()
-	job = c.WaitUntilJobFinish(job)
-	c.DownloadFile(job, usersFile)
-}
-
-func (c client) RequestExportUsers() Job {
-	b := ExportUsersRequest{
-		ConnectionId: c.Connection,
-		Format:       "json",
+func ExportUsers(jobManager *management.JobManager, connection string, usersAttributes []string, usersFile string) {
+	format := "json"
+	job := management.Job{
+		ConnectionID: &connection,
+		Format:       &format,
 	}
-	for _, value := range c.UserAttributes {
-		b.Fields = append(b.Fields, map[string]string{"name": value})
+
+	AddUserAttributes(&job, usersAttributes)
+
+	err := jobManager.ExportUsers(&job)
+	if err != nil {
+		panic(err)
 	}
 
-	jsonData, _ := json.Marshal(b)
+	j, err := jobManager.Read(*job.ID)
+	for ok := true; ok; ok = *j.Status == "pending" {
+		fmt.Println("Job status " + *j.Status + " waiting 5 seconds.")
+		time.Sleep(5 * time.Second)
+		j, _ = jobManager.Read(*job.ID)
+	}
 
-	req, _ := http.NewRequest("POST",
-		"https://"+c.Domain+"/api/v2/jobs/users-exports",
-		strings.NewReader(string(jsonData)))
-
-	req.Header.Add("authorization", "Bearer "+c.login())
-	req.Header.Add("content-type", "application/json")
-
-	res, _ := http.DefaultClient.Do(req)
-
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-
-	job := Job{}
-	_ = json.Unmarshal(body, &job)
-
-	return job
+	DownloadFile(*j.Location, usersFile)
 }
 
-func (c client) DownloadFile(j Job, usersFile string) {
-	fmt.Println("Downloading ", j.Location, " to ", usersFile)
+func AddUserAttributes(job *management.Job, usersAttributes []string) {
+	attributes := usersAttributes
+	if attributes[0] == "" {
+		attributes = DefaultUserAttributes
+	}
 
-	resp, err := http.Get(j.Location)
+	for _, value := range attributes {
+		field := map[string]interface{}{"name": value}
+		job.Fields = append(job.Fields, field)
+	}
+}
+
+func DownloadFile(url string, usersFile string) {
+	fmt.Println("Downloading ", url, " to ", usersFile)
+
+	resp, err := http.Get(url)
 	if err != nil {
 		return
 	}
