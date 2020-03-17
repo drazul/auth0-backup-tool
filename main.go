@@ -37,7 +37,7 @@ func parseFlags() Flags {
 	flag.StringVar(&flags.Connection, "connection", "", "Auth0 connection ID")
 	flag.StringVar(&flags.UsersFile, "users-file", "users-export.json", "File path where to store the exported users or where to read the users to import")
 	flag.StringVar(&flags.UserAttributes, "user-attributes", "", "List of user attributes to export. Format: attr1,attr2,attr3")
-	flag.StringVar(&flags.Action, "action", "", "Action to perform. Can be import or export")
+	flag.StringVar(&flags.Action, "action", "", "Action to perform. Can be 'import' or 'export'")
 
 	flag.Parse()
 
